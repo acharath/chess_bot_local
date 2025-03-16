@@ -3,6 +3,7 @@ from glob import glob
 
 package_name = 'final_demo'
 
+
 other_files = [
 	('share/final_demo/launch', glob('launch/*')),
 	('share/final_demo/rviz', glob('rviz/*')),
