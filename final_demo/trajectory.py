@@ -51,7 +51,6 @@ class TrajectoryNode(Node):
 
         # Initialize waiting position and commands
         self.waiting_position = [math.pi/2.5, -3*math.pi/4, -3*math.pi/4, math.pi/2, 0.0, 0.0]
-        # self.waiting_position = [math.pi/2.5, -3*math.pi/4, -3*math.pi/4, math.pi/2, 0.0, 0.0]
         self.segments = [
             Segment(
                 joint_angles = [0.0, -math.pi/2, 0.0, 0.0, 0.0, 0.0],
@@ -136,7 +135,7 @@ class TrajectoryNode(Node):
         #     self.get_logger().info(f"curr_effort: {self.curr_effort}")
 
         if self.prev_spline and self.spline and self.spline.get_id() == "down to grab piece":
-            self.get_logger().info(f"curr_effort: {self.curr_effort}")
+            # self.get_logger().info(f"curr_effort: {self.curr_effort}")
             if self.curr_effort[1] > 1.0:
                 self.get_logger().info("collision detected going down")
                 new_down_segment = self.spline.segment

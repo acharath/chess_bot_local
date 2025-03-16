@@ -1,8 +1,8 @@
+# chess_helpers.py
+
 #!/usr/bin/env python3
 
 # Helper functions that wrap the chess engine
-
-# chess_helpers.py
 
 from stockfish import StockfishException
 import chess
@@ -141,19 +141,19 @@ def find_best_move(stockfish, fen_position):
     
     #ADDITION
     #check if castle
-    # castle_status = None
-    # if best_move == "e1g1":
-    #     move_to_send.append(("h1", "f1"))
-    #     castle_status = ("K")
-    # elif best_move == "e8g8":
-    #     move_to_send.append(("h8", "f8"))
-    #     castle_status = ("k")
-    # elif best_move == "e1c1":
-    #     move_to_send.append(("a1", "d1"))
-    #     castle_status = ("Q")
-    # elif best_move == "e8c8":
-    #     move_to_send.append(("a8", "d8"))
-    #     castle_status = ("q")
+    castle_status = ""
+    if best_move == "e1g1":
+        move_to_send.append(("h1", "f1"))
+        castle_status = ("K")
+    elif best_move == "e8g8":
+        move_to_send.append(("h8", "f8"))
+        castle_status = ("k")
+    elif best_move == "e1c1":
+        move_to_send.append(("a1", "d1"))
+        castle_status = ("Q")
+    elif best_move == "e8c8":
+        move_to_send.append(("a8", "d8"))
+        castle_status = ("q")
 
     piece_types = []
 
@@ -161,8 +161,12 @@ def find_best_move(stockfish, fen_position):
         piece_type = stockfish.get_what_is_on_square(start_pos)
         
         piece_types.append(piece_type)
+    
+    stockfish.make_moves_from_current_position([best_move])
+    new_fen_position = stockfish.get_fen_position()
 
-    return (move_to_send, piece_types)
 
-    # return (move_to_send, piece_types, castle_status)
+
+    return (move_to_send, piece_types, castle_status, new_fen_position)
+
 

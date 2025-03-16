@@ -14,7 +14,7 @@ from sensor_msgs.msg import Image
 from interfaces.msg import ChessState, ChessSquare
 from collections import defaultdict
 
-DEBUG = False
+DEBUG = True
 
 class DetectorNode(Node):
     def __init__(self):

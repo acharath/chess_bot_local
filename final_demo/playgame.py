@@ -11,7 +11,7 @@ from rclpy.node import Node
 from final_demo.KinematicChain import KinematicChain
 from final_demo.TransformHelpers import *
 from final_demo.robot_helpers import ik_solve, gravity_comp
-from final_demo.chess_helpers import is_legal, find_best_move
+from final_demo.chess_helpers import is_legal, find_best_move, is_legal_move, check_if_game_over
 
 from interfaces.msg import Segment, SegmentArray, ChessState
 from std_msgs.msg import String, Bool
@@ -62,6 +62,16 @@ class GameNode(Node):
         self.k_promote = [.3, .5, .025]
 
         self.heights = {"KING": .03, "QUEEN": .03, "BISHOP": .025, "ROOK": .025, "KNIGHT":.025, "PAWN":.025}
+
+        #ADDITION
+        self.opponent_color = "b"
+        self.castle_available = "KQkq"
+        self.last_fen_core = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+        # self.last_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq"
+        self.last_fen = self.last_fen_core + " " + self.opponent_color + " " + self.castle_available
+        self.pieces_ready_for_promotion = {"queen": True, "rook": False, "bishop": False, "knight": False}
+        
+        self.first_move = True
 
     def request_fen(self, msg):
         current_time = time.time()
@@ -187,11 +197,69 @@ class GameNode(Node):
         self.get_logger().info(f"Added segment => xyz={xyz_target}, closed={closed}, time={seg_time}s")
         return seg
     
+    #ADDITION
+    def get_position_for_promotion(self, piece_type):
+        #return position of piece in box for promotion
+        #MAKE SURE IT HAS HEIGHT ADDED TO IT LIKE IN 
+        if piece_type == "QUEEN":
+            return self.q_promote
+        if piece_type == "ROOK":
+            return self.r_promote
+        if piece_type == "BISHOP":
+            return self.b_promote
+        if piece_type == "KNIGHT":
+            return self.k_promote
+        return None
+
+    
     def do_turn(self, fen_position):
 
         self.task_finished = False
 
-        move_array, piece_types = find_best_move(stockfish, fen_position)
+        #ADDITION
+        self.get_logger().info(f"last fen: {self.last_fen}")
+        self.get_logger().info(f"cur fen: {fen_position}")
+
+        if not is_legal(stockfish, fen_position):
+            self.get_logger().info("Illegal Position")
+            return
+        if not self.first_move:
+            if not is_legal_move(self.last_fen, fen_position):
+                self.get_logger().info("Illegal Move")
+                return
+        result = check_if_game_over(fen_position)
+        if result["is_game_over"] == True:
+            if result["reason"] == "checkmate":
+                if result["winner"] == "white":
+                    if self.robot_color == "w":
+                        self.get_logger().info("Robot Win")
+                        return
+                    else:
+                        self.get_logger().info("Opponent Win")
+                        return
+                if result["winner"] == "black":
+                    if self.robot_color == "b":
+                        self.get_logger().info("Robot Win")
+                        return
+                    else:
+                        self.get_logger().info("Opponent Win")
+                        return
+            else:
+                self.get_logger().info("Draw")
+                return
+        try:
+            move_array, piece_types, castle_status, new_position = find_best_move(stockfish, fen_position)
+        except:
+            self.get_logger().info(f"Error in position: {fen_position}")
+            return
+
+
+        if castle_status != "":
+            self.castle_available = str(list(self.castle_available).remove(castle_status))
+        if self.castle_available == "":
+            self.castle_available = "-"
+
+
         self.get_logger().info(f"Optimal move: {move_array}")
         self.get_logger().info(f"Pieces: {piece_types}")
 
@@ -207,20 +275,37 @@ class GameNode(Node):
 
             pos1 = []
             pos2 = []
+            #ADDITION
             if square2 == "capture":
                 pos1 = self.board_dict[square1] + [height]
                 pos2 = self.capture_position + [height]
+                if type1 == "QUEEN" and self.pieces_ready_for_promotion["queen"] == False:
+                    pos2 = self.get_position_for_promotion("QUEEN") + [height]
+                    self.pieces_ready_for_promotion["queen"] = True
+                elif type1 == "ROOK" and self.pieces_ready_for_promotion["rook"] == False:
+                    pos2 = self.get_position_for_promotion("ROOK") + [height]
+                    self.pieces_ready_for_promotion["rook"] = True
+                elif type1 == "BISHOP" and self.pieces_ready_for_promotion["bishop"] == False:
+                    pos2 = self.get_position_for_promotion("BISHOP")+ [height]
+                    self.pieces_ready_for_promotion["bishop"] = True
+                elif type1 == "KNIGHT" and self.pieces_ready_for_promotion["knight"] == False:
+                    pos2 = self.get_position_for_promotion("KNIGHT")+ [height]
+                    self.pieces_ready_for_promotion["knight"] = True
             elif square2[1:] == "q_promote":
-                pos1 = self.q_promote + [height]
+                pos1 = self.get_position_for_promotion("QUEEN")+ [height]
+                # pos1 = self.q_promote + [height]
                 pos2 = self.board_dict[square1] + [height]
             elif square2[1:] == "r_promote":
-                pos1 = self.r_promote + [height]
+                pos1 = self.get_position_for_promotion("ROOK")+ [height]
+                # pos1 = self.r_promote + [height]
                 pos2 = self.board_dict[square1] + [height]
             elif square2[1:] == "b_promote":
-                pos1 = self.b_promote + [height]
+                pos1 = self.get_position_for_promotion("BISHOP")+ [height]
+                # pos1 = self.b_promote + [height]
                 pos2 = self.board_dict[square1] + [height]
             elif square2[1:] == "k_promote":
-                pos1 = self.k_promote  + [height]
+                pos1 = self.get_position_for_promotion("KNIGHT")+ [height]
+                # pos1 = self.k_promote  + [height]
                 pos2 = self.board_dict[square1] + [height]
             else:
                 pos1 = self.board_dict[square1] + [height]
@@ -233,6 +318,20 @@ class GameNode(Node):
             pos2 += offset2
 
             seg_array.segments += self.generate_moves(pos1, pos2)
+
+        #ADDITION
+        #update last fen position
+        temp_fen_position = new_position
+        self.get_logger().info(f"previous {temp_fen_position}")
+        temp_fen_position = temp_fen_position.split(" ")[0]
+        self.get_logger().info(f"updated fen to: {temp_fen_position}")
+        self.last_fen_core = temp_fen_position
+
+        self.last_fen = self.last_fen_core + " " + self.opponent_color + " " + self.castle_available
+
+        self.get_logger().info(f"{self.last_fen}")
+
+        self.first_move = False
         
         seg_array.segments += self.move_indicator()
 
