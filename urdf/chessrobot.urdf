@@ -1,0 +1,199 @@
+<?xml version="1.0"?>
+
+<robot
+  name="chessrobot">
+
+  <link name="world"/>
+  <joint name="placement" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
+  </joint>
+  <link
+    name="base_link">
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://final_demo/meshes/base.stl" 
+          scale = "0.001 0.001 0.001" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+  </link>
+
+  <link
+    name="link_1">
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://final_demo/meshes/link_1.stl"
+          scale = "0.0001 0.0001 0.0001" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+  </link>
+  <joint
+    name="joint_1"
+    type="continuous">
+    <origin
+      xyz="-0.079523 0.032086 0.06005"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="link_1" />
+    <axis
+      xyz="0 0 1" />
+  </joint>
+
+  <link
+    name="link_2">
+    <visual>
+      <origin
+        xyz="0.0 -0.032 -0.036"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://final_demo/meshes/link_2.stl"
+          scale = "0.0001 0.0001 0.0001" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+  </link>
+  <joint
+    name="joint_2"
+    type="continuous">
+    <origin
+      xyz="-0.015 0.0 0.066"
+      rpy="0 0 0" />
+    <parent
+      link="link_1" />
+    <child
+      link="link_2" />
+    <axis
+      xyz="-1 0 0" />
+  </joint>
+
+  <link
+    name="link_3">
+    <visual>
+      <origin
+        xyz="0.0 0.0 0.0"
+        rpy="1.5708 0 1.5708" />
+      <geometry>
+        <mesh
+          filename="package://final_demo/meshes/link_3_new.stl"
+          scale = "0.001 0.001 0.001" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+  </link>
+  <joint
+    name="joint_3"
+    type="continuous">
+    <origin
+      xyz="0.037 0.41 0"
+      rpy="0 0 0" />
+    <parent
+      link="link_2" />
+    <child
+      link="link_3" />
+    <axis
+      xyz="1 0 0" />
+  </joint>
+
+  <link
+    name="link_4">
+    <visual>
+      <origin
+        xyz="0.0 0.0 0.0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://final_demo/meshes/link_4.stl"
+          scale = "0.0001 0.0001 0.0001" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+  </link>
+  <joint
+    name="joint_4"
+    type="continuous">
+    <origin
+      xyz="-0.04 0.347 0"
+      rpy="0 0 0" />
+    <parent
+      link="link_3" />
+    <child
+      link="link_4" />
+    <axis
+      xyz="-1 0 0" />
+  </joint>
+  
+ <link
+    name="link_5">
+    <visual>
+      <origin
+        xyz="0.0 0.0 0.0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://final_demo/meshes/link_5.stl"
+          scale = "0.0001 0.0001 0.0001" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+  </link>
+  <joint
+    name="joint_5"
+    type="continuous">
+    <origin
+      xyz="-0.05 0.05 0.0"
+      rpy="0 0 0" />
+    <parent
+      link="link_4" />
+    <child
+      link="link_5" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+
+  <link name="tip"/>
+  <joint name="joint_6" type="continuous">
+    <parent link="link_5"/>
+    <child link="tip"/>
+    <origin xyz="0.01 0.13 -0.02" rpy="0 0 0"/>
+    <axis xyz="0 1 0" />
+  </joint>
+</robot>
+
