@@ -145,7 +145,6 @@ class DetectorNode(Node):
 
         # Convert ROS -> OpenCV
         image = self.bridge.imgmsg_to_cv2(msg, "passthrough")
-        image_original = image.copy()
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
         border_lowerbound = np.array([0, 70, 130])  # Lower bound for border
@@ -285,16 +284,16 @@ class DetectorNode(Node):
             out_msg = self.bridge.cv2_to_imgmsg(image, "rgb8")
             self.pub_board_rgb.publish(out_msg)
 
-        final_circles = self.detect_circles(image_original, new_points)
-        for (cx, cy, r, square_center) in final_circles:
-            cv2.circle(image, (int(cx), int(cy)), int(r), (255, 255, 255), thickness=2)
-            sc_x, sc_y = square_center
-            cv2.circle(image, (int(sc_x), int(sc_y)), 2, (0, 0, 255), -1)
-            label = f"({sc_x:.1f}, {sc_y:.1f})"
-            cv2.putText(image, label, (int(sc_x) + 5, int(sc_y) - 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
+        # final_circles = self.detect_circles(image, new_points)
+        # for (cx, cy, r, square_center) in final_circles:
+        #     cv2.circle(image, (int(cx), int(cy)), int(r), (255, 255, 255), thickness=2)
+        #     sc_x, sc_y = square_center
+        #     cv2.circle(image, (int(sc_x), int(sc_y)), 2, (0, 0, 255), -1)
+        #     label = f"({sc_x:.1f}, {sc_y:.1f})"
+        #     cv2.putText(image, label, (int(sc_x) + 5, int(sc_y) - 5),
+        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
 
-        fallen_pieces = self.detect_fallen_chess_piece(image_original)
+        fallen_pieces = self.detect_fallen_chess_piece(image)
         for piece in fallen_pieces:
             pts = np.array(piece, np.int32)
             pts = pts.reshape((-1, 1, 2))
@@ -333,7 +332,7 @@ class DetectorNode(Node):
         edges = cv2.Canny(gray_blurred, 30, 100)
 
         circles = cv2.HoughCircles(
-            edges,
+            gray,
             cv2.HOUGH_GRADIENT,
             dp=1.0,
             minDist=2,
@@ -420,44 +419,44 @@ class DetectorNode(Node):
   
 
     def detect_fallen_chess_piece(self, image):
+        # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        # enhanced = cv2.equalizeHist(gray)
+        
+        # thresh = cv2.adaptiveThreshold(
+        #     enhanced, 255,
+        #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        #     cv2.THRESH_BINARY_INV,
+        #     11, 2)
+
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Create board mask first
-        board_mask = np.zeros(image.shape[:2], dtype=np.uint8)
-        if hasattr(self, 'tape_corners'):
-            board_polygon = self.tape_corners.reshape((-1, 1, 2))
-            cv2.fillPoly(board_mask, [board_polygon], 255)
-        else:
-            # If no board detected, use full image
-            board_mask = np.ones(image.shape[:2], np.uint8) * 255
-
-        # Apply color thresholding
-
-        lower_brown = np.array([60, 0, 0])
-        upper_brown = np.array([255, 180, 255])
-        color_mask = cv2.inRange(hsv, lower_brown, upper_brown)
-
-        # Combine masks - only look for pieces within board
-        mask = cv2.bitwise_and(color_mask, board_mask)
+        
+        # kernel = np.ones((3, 3), np.uint8)
+        # morph = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
+        lower_brown = np.array([10, 10, 10])
+        upper_brown = np.array([180, 70, 90])
+        mask = cv2.inRange(hsv, lower_brown, upper_brown)
 
         # Find contours in the mask
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         if DEBUG:
-            # Create a debug image showing both masks
-            debug_mask = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.uint8)
-            debug_mask[board_mask > 0] = [0, 255, 0]  # Green for board area
-            debug_mask[mask > 0] = [0, 0, 255]  # Red for detected pieces
-            thresh_msg = self.bridge.cv2_to_imgmsg(debug_mask, "rgb8")
+            thresh_msg = self.bridge.cv2_to_imgmsg(mask, "mono8")
             self.pub_fallen_thresh.publish(thresh_msg)
         
         fallen_pieces = []
         
-        MIN_AREA = 40
-        MAX_AREA = 500
-        MIN_ASPECT_RATIO = 1.5
+        MIN_AREA = 30    # Adjust as needed.
+        MAX_AREA = 1000   # Adjust as needed.
+        MIN_ASPECT_RATIO = 1.6  # Only consider pieces that are tilted enough.
         MAX_ASPECT_RATIO = 5.0
+        
+        # If the blue board border is available, create a polygon for it.
+        board_polygon = None
+        if hasattr(self, 'tape_corners'):
+            board_polygon = self.tape_corners.reshape((-1, 1, 2))
         
         for cnt in contours:
             if cv2.contourArea(cnt) < MIN_AREA:
@@ -476,9 +475,14 @@ class DetectorNode(Node):
 
             aspect_ratio = max(w, h) / float(min(w, h))
             if MAX_ASPECT_RATIO > aspect_ratio > MIN_ASPECT_RATIO:
+                # If a board polygon exists, check that the candidate's center is inside it.
+                if board_polygon is not None:
+                    center = np.mean(box, axis=0)
+                    if cv2.pointPolygonTest(board_polygon, (int(center[0]), int(center[1])), False) < 0:
+                        continue
                 fallen_pieces.append(box)
-
-        # Merge adjacent boxes
+        
+        # Merge adjacent boxes: if centers of boxes are within merge_threshold pixels, merge them.
         fallen_pieces = self.merge_adjacent_boxes(fallen_pieces, merge_threshold=20)
         return fallen_pieces
 
